@@ -1,0 +1,39 @@
+<app-layout>
+  <main class="dashboard-main-wrapper">
+    <h1>Dashboard</h1>
+
+    <div class="grid">
+      <mat-card *ngIf="downloadFile">
+        <mat-card-content>
+          <h2>Application is assembled</h2>
+          <p>Congratulations! The application is ready to be downloaded.</p>
+          <p>Latest version created at<br/><br/><em>{{ statsFile.birthtime }}</em></p>
+          <p>
+            <a mat-flat-button
+               color="primary"
+               [download]="downloadFile"
+               [disabled]="wait"
+               href="/api/download">
+              download APK
+            </a>
+          </p>
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <h2>Need a new build?</h2>
+          <p>There are changes you want to try? You just want to be sure you have the latest?</p>
+          <p><br/><br/><br/></p>
+          <p>
+            <button type="button"
+                    mat-flat-button
+                    color="primary"
+                    [disabled]="wait"
+                    (click)="createNewBuild('Assemble started...\n')">create a new build</button>
+          </p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <pre *ngIf="output" #logOutput class="build-output">{{ output }}</pre>
+  </main>
+</app-layout>

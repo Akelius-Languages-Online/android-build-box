@@ -1,0 +1,88 @@
+#!/bin/bash
+
+if test -f "/android/assemble.in.progress"; then
+    echo "" >> /android/assemble.in.progress.log
+    echo "/android/assemble.in.progress exists." >> /android/assemble.in.progress.log
+    echo "/android/assemble.in.progress exists." >> /android/assemble.in.progress.error
+    echo "" >> /android/assemble.in.progress.log
+    exit 1
+fi
+
+echo "jumping to the proper folder..." >> /android/assemble.in.progress.log
+cd /home/android
+
+echo "" >> /android/assemble.in.progress.log
+echo "sending message to slack" >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+./send-to-misc \
+    'Android Build Box' \
+    'Snapshot assembling' \
+    '-- not present --' \
+    '#ff9966'
+
+echo "cleaning up..." >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+
+touch /android/assemble.in.progress
+rm -f /android/assemble.complete
+rm -f /android/snapshot.apk
+rm -f /home/express/builds/snapshot.apk
+
+> /android/assemble.in.progress.log
+> /android/assemble.in.progress.error
+
+echo "initialize logs..." >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+
+echo "[starting $(pgrep -x assemble)]" > /android/assemble.in.progress.log
+echo "[starting $(pgrep -x assemble)]" > /android/assemble.in.progress.error
+
+pushd university-language-app-android
+
+echo "updating git..." >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+git pull
+
+echo "translating..." >> /android/assemble.in.progress.log
+./gradlew translation2 >> /android/assemble.in.progress.log 2>> /android/assemble.in.progress.error
+
+echo "assembling..." >> /android/assemble.in.progress.log
+
+./gradlew assembleBetaRelease --stacktrace  >> /android/assemble.in.progress.log 2>> /android/assemble.in.progress.error
+cp app/build/outputs/apk/beta/release/app-beta-release-unsigned.apk app.apk
+/opt/sdk/build-tools/32.0.0/apksigner sign --ks ./akelius_testing_keystore --ks-pass pass:qweqwe123123 app.apk >> /android/assemble.in.progress.log 2>> /android/assemble.in.progress.error
+/opt/sdk/build-tools/32.0.0/apksigner verify app.apk >> /android/assemble.in.progress.log 2>> /android/assemble.in.progress.error
+
+TIMESTAMP=$(date +%s)
+cp app.apk /android/snapshot.apk
+cp app.apk /app/builds/snapshot.apk
+cp app.apk /android/${TIMESTAMP}.apk
+cp app.apk /app/builds/${TIMESTAMP}.apk
+
+popd
+
+echo "packing up..." >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+
+rm -f /android/assemble.in.progress
+touch /android/assemble.complete
+
+echo "uploading to sandbox" >> /android/assemble.in.progress.log
+sshpass -p $SSH_PASSWORD rsync -azP -e "ssh -p ${SSH_PORT} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" /android/snapshot.apk ${SSH_USER}@${SSH_HOST}:${SSH_PATH}
+
+echo "" >> /android/assemble.in.progress.log
+echo "final file can be downloaded from https://sandbox.ranapat.org/drop/snapshot.apk" >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+
+echo "" >> /android/assemble.in.progress.log
+echo "assemble complete" >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+
+echo "" >> /android/assemble.in.progress.log
+echo "sending message to slack" >> /android/assemble.in.progress.log
+echo "" >> /android/assemble.in.progress.log
+./send-to-misc \
+    'Android Build Box' \
+    'Snapshot assembled' \
+    "http://${HOST_NAME}:8282/api/download" \
+    '#36a64f'

@@ -1,0 +1,17 @@
+.wrapper {
+  height: 100%;
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+
+  h1 {
+    font-size: 6rem;
+    text-align: center;
+    line-height: normal;
+  }
+  h3 {
+    font-size: 3rem;
+    text-align: center;
+    line-height: normal;
+  }
+}

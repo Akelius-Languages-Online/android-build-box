@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#!/bin/bash
+
+CLI_COLOR_RED="\e[31m"
+CLI_COLOR_GREEN="\e[32m"
+CLI_COLOR_YELLOW="\e[33m"
+CLI_COLOR_BLUE="\e[34m"
+CLI_COLOR_RESET="\e[0m"
+
+echo -e "${CLI_COLOR_GREEN}sending status to slack...${CLI_COLOR_RESET}"
+echo ""
+
+message_timestamp=$(date +%s%N | cut -b1-10)
+data="
+{\"attachments\":[
+  {
+    \"color\": \"$4\",
+    \"mrkdwn_in\": [ \"text\" ],
+
+    \"author_name\": \"Android Build Box Actions\",
+    \"author_link\": \"undefined\",
+    \"author_icon\": \"https://icon-library.com/images/github-icon-png/github-icon-png-1.jpg\",
+
+    \"pretext\": \"a message from android build box ...\",
+
+    \"title\": \"Android Build Box status for university-language-app-android\",
+    \"title_link\": \"undefined\",
+
+    \"text\": \"$1\",
+    \"fields\": [
+      {
+        \"title\": \"Details\",
+        \"value\": \"$2\",
+        \"short\": false
+      },
+      {
+        \"title\": \"Assets\",
+        \"value\": \"$3\",
+        \"short\": false
+      }
+    ],
+
+    \"thumb_url\": \"https://avatars.githubusercontent.com/u/4389652?s=120&v=4\",
+
+    \"footer\": \"slack & github\",
+    \"footer_icon\": \"https://platform.slack-edge.com/img/default_application_icon.png\",
+    \"ts\": $message_timestamp
+  }
+]}"
+
+curl -X POST -H "Content-type: application/json" --data "$data" https://hooks.slack.com/services/${SLACK_TOKEN}

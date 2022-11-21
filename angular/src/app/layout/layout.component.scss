@@ -1,0 +1,52 @@
+@import "src/scss/variables";
+
+:host {
+  height: 100vh;
+  display: flex;
+  width: 100%;
+  flex-flow: column;
+}
+
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  background: #3f51b5;
+  color: #fff;
+  padding: $gap;
+  line-height: 3rem;
+
+  .top-nav-button {
+    font-size: 1.2rem;
+    line-height: 2rem;
+    color: #fff;
+
+    img {
+      height: 24px;
+      vertical-align: middle;
+      margin-right: $gap;
+      filter: brightness(200%);
+    }
+  }
+}
+
+.main-wrapper {
+  background: #f0f0f0;
+  margin-top: 70px;
+  padding: $gap-double;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.footer {
+  text-align: center;
+  color: $color-text-gray;
+  padding: $gap-double;
+  border-top: 1px solid $color-line-gray;
+}
+
+.mat-elevation-z6 {
+  box-shadow: 0 3px 5px -1px #0003, 0 6px 10px #00000024, 0 1px 18px #0000001f;
+}

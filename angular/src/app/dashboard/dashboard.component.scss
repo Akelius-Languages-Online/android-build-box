@@ -1,0 +1,20 @@
+@import "src/scss/variables";
+
+.grid {
+  display: grid;
+  padding-right: $gap-double;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-gap: $gap-double;
+  width: 100%;
+}
+
+.build-output {
+  width: 100%;
+  min-height: 200px;
+  max-height: 100%;
+  margin-top: $gap-double;
+  background: $color-black;
+  color: #eee;
+  padding: $gap;
+  overflow: auto;
+}

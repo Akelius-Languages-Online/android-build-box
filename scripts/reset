@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo "reseting /android/*..."
+rm -f /android/assemble.in.progress
+rm -f /android/assemble.complete
+rm -f /android/snapshot.apk
+
+> /android/assemble.in.progress.log
+> /android/assemble.in.progress.error
