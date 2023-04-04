@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: university-android-app-box
+  namespace: lae-development
+  labels:
+    app: university-android-app-box
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: university-android-app-box
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: university-android-app-box
+      annotations:
+        botkube.io/channel: "university-k8s"
+    spec:
+      serviceAccountName: azure-workload-identity-service-account
+      securityContext:
+        runAsUser: 2000
+        runAsNonRoot: true
+      containers:
+        - name: university-android-app-box
+          image: businessschool.azurecr.io/business-school/university-android-app-box:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8282
+          resources:
+            limits:
+              cpu: "0.2"
+              #            todo: Ask Ivo about memory consumption
+              memory: 256Mi
+            requests:
+              #           todo: Ask Ivo about memory consumption
+              cpu: "0.2"
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8282
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8282
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 10
+          volumeMounts:
+            - name: secrets-store-inline # mount the keyvault secret as volume inside the container
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+            - name: ssh-private-key
+              mountPath: "/root/.ssh/id_rsa"
+              subPath: id_rsa
+              readOnly: true
+            - name: ssh-public-key
+              mountPath: "/root/.ssh/id_rsa.pub"
+              subPath: id_rsa.pub
+              readOnly: true
+#          env:
+#      todo: add slack token
+#            - name: SLACK_TOKEN
+#              valueFrom:
+#                secretKeyRef:
+#                  name: android-app-box-secret
+#                  key: ANDROID-APP-BOX-SLACK-TOKEN
+      imagePullSecrets:
+        - name: businessschool-azurecr-io-regsecret
+      volumes:
+        - name: secrets-store-inline # keyvault csi secret volume
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: keyvault-secret-code-lae-development # metadata.name in secret-provider-class.yaml
+              secretProviderClassNamespace: lae-development
+        - name: ssh-private-key
+          secret:
+            secretName: ssh-private-key
+            items:
+              - key: ANDROID-APP-BOX-SSH-PRIVATE-KEY
+                path: id_rsa
+        - name: ssh-public-key
+          secret:
+            secretName: ssh-public-key
+            items:
+              - key: ANDROID-APP-BOX-SSH-PUBLIC-KEY
+                path: id_rsa.pub
