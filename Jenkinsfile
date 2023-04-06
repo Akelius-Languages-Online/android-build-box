@@ -11,20 +11,17 @@ String slackChannel = '#university-pipelines'
 String currentStage = 'Setup'
 
 class KubeConfig {
-  static String registryRepository = "business-school/university-secret-code-service"
+  static String registryRepository = "business-school/android-build-box"
   static String registryUrl = "businessschool.azurecr.io"
-  static String kubernetesService = "university-secret-code-service"
+  static String kubernetesService = "android-build-box"
   static String developmentNamespace = "lae-development"
   static String testingNamespace = "lae-testing"
   static String stagingNamespace = "lae-staging"
   static String productionNamespace = "lae-production"
 }
 
-boolean deployDevelopment = env.BRANCH_NAME == 'master'
-boolean deployTesting = false
-boolean deployStaging = env.TAG_NAME != null && env.TAG_NAME.startsWith('rc-')
-boolean deployProduction = env.TAG_NAME != null && env.TAG_NAME.startsWith('release-')
-boolean deploy = deployDevelopment | deployTesting | deployStaging | deployProduction
+boolean deployDevelopment = env.BRANCH_NAME == 'main'
+boolean deploy = deployDevelopment
 
 properties([
   // adjust thresholds as needed, but try to keep it as low as possible. This is already a good configuration.
@@ -61,10 +58,22 @@ def setupKubeConfig(kubeConfigPath) {
 
 def buildAndPushImage(imageTag) {
   docker.withRegistry("https://" + "${KubeConfig.registryUrl}", "${KubeConfig.registryUrl}") {
-    def dockerImage = docker.build("${KubeConfig.registryUrl}/${KubeConfig.registryRepository}:${imageTag}", " --pull .")
+    def imageName = "${KubeConfig.registryUrl}/${KubeConfig.registryRepository}"
+    def latestImageName = "${imageName}:latest"
+
+    docker.image("${latestImageName}").pull()
+
+    def dockerImage
+    try {
+      dockerImage = docker.build("${imageName}:${imageTag}", "--cache-from ${imageName}:latest .")
+    } catch (Exception e) {
+      echo "Will not build a new image from cached image. Error: ${e}"
+      dockerImage = docker.build("${imageName}:${imageTag}", " --pull .")
+    }
 
     retry(3) {
       dockerImage.push()
+      dockerImage.push('latest')
     }
   }
 }
@@ -76,9 +85,12 @@ def stageImage(String kubernetesTeamNamespacePrefix,
                String imageTag
 ) {
   container('kubectl') {
-    withCredentials([[$class       : "FileBinding",
-                      credentialsId: credentials,
-                      variable     : 'KUBE_CONFIG']]) {
+    withCredentials([
+      [$class: "FileBinding",
+       credentialsId: credentials,
+       variable: 'KUBE_CONFIG'
+      ]
+    ]) {
       setupKubeConfig(env.KUBE_CONFIG)
       kubeSubst("IMAGE_TAG", imageTag, "deployment/${environment}/deployment.yaml")
       sh "kubectl apply -f deployment/${environment}"
@@ -89,9 +101,12 @@ def stageImage(String kubernetesTeamNamespacePrefix,
 
 def validateK8SConfigs(String environment, String credentials, String imageTag) {
   container('kubectl') {
-    withCredentials([[$class       : "FileBinding",
-                      credentialsId: credentials,
-                      variable     : 'KUBE_CONFIG']]) {
+    withCredentials([
+      [$class: "FileBinding",
+       credentialsId: credentials,
+       variable: 'KUBE_CONFIG'
+      ]
+    ]) {
       setupKubeConfig(env.KUBE_CONFIG)
       kubeSubst("IMAGE_TAG", imageTag, "deployment/${environment}/deployment.yaml")
       sh "kubectl apply --validate=true --dry-run=client -f deployment/${environment}"
@@ -117,6 +132,25 @@ def buildAndPushImageStage(String imageTag) {
   }
 }
 
+def createMonitorJson() {
+  // git informations
+  String commitHash = sh(
+    script: 'git rev-parse --short HEAD',
+    returnStdout: true
+  ).trim()
+  String commitDate = sh(
+    script: 'git log -1 --pretty=format:"%cd"',
+    returnStdout: true
+  ).trim()
+  String fullCommitHash = sh(
+    script: 'git log -1 --pretty=format:"%H"',
+    returnStdout: true
+  ).trim()
+  //  build informations
+  Date buildTimeDate = new Date()
+  String buildTime = buildTimeDate.format("yyyyMMddHHmm")
+  sh "echo '{\"git\":{\"commit\":{\"time\":\"${commitDate}\", \"id\":\"${commitHash}\"},\"branch\":\"${fullCommitHash}\"},\"build\":{\"time\":\"${buildTime}\"}}' >> git-info.json"
+}
 
 timeout(time: 60, unit: 'MINUTES') {
   timestamps {
@@ -148,41 +182,26 @@ timeout(time: 60, unit: 'MINUTES') {
           checkout scm
 
           imageTag = buildImageTag()
+          createMonitorJson()
+        }
+
+        stage('Validate K8S configs Dev') {
+          currentStage = 'Validate K8S configs Dev'
+          validateK8SConfigs('development', 'kubeconfig-lae-development-azure-cicd', imageTag)
         }
 
         if (deploy) {
           buildAndPushImageStage(imageTag)
-        }
 
-        if (deployDevelopment) {
-          stage('Deploy Dev') {
-            currentStage = 'Deploy Dev'
-            stageImage(KubeConfig.developmentNamespace, 'development', 'kubeconfig-lae-development-azure-cicd', imageTag)
+          if (deployDevelopment) {
+            stage('Deploy Dev') {
+              currentStage = 'Deploy Dev'
+              stageImage(KubeConfig.developmentNamespace, 'development', 'kubeconfig-lae-development-azure-cicd', imageTag)
+            }
           }
+
         }
-//          if (deployTesting) {
-//            stage('Deploy Test') {
-//              currentStage = 'Deploy Test'
-//              stageImage(KubeConfig.testingNamespace, 'testing', 'kubeconfig-lae-testing-azure-cicd', imageTag)
-//            }
-//          }
       }
-      stage('Validate K8S configs Dev') {
-        currentStage = 'Validate K8S configs Dev'
-        validateK8SConfigs('development', 'kubeconfig-lae-development-azure-cicd', imageTag)
-      }
-//      stage('Validate K8S configs Test') {
-//        currentStage = 'Validate K8S configs Test'
-//        validateK8SConfigs('testing', 'kubeconfig-lae-testing-azure-cicd', imageTag)
-//      }
-//      stage('Validate K8S configs Staging') {
-//        currentStage = 'Validate K8S configs Staging'
-//        validateK8SConfigs('staging', 'kubeconfig-lae-staging-azure-cicd', imageTag)
-//      }
-//      stage('Validate K8S configs Production') {
-//        currentStage = 'Validate K8S configs Production'
-//        validateK8SConfigs('production', 'kubeconfig-lae-production-azure-cicd', imageTag)
-//      }
     }
   }
 }

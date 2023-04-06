@@ -9,7 +9,8 @@ project/local.properties
 
 # SSH
 
-ssh/id_*
+!/ssh/*config
+!/ssh/*known_hosts
 
 # Compiled output
 /dist
