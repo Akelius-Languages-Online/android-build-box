@@ -8,13 +8,6 @@ RUN apk add rsync
 RUN apk add python3
 RUN apk add nodejs npm
 
-ADD ssh/* /root/.ssh/
-ADD scripts/* /home/android/
-ADD logs/* /android/
-
-RUN git clone git@github.com:Akelius-Languages-Online/university-language-app-android.git
-ADD project university-language-app-android/
-
 ADD angular /home/angular/
 WORKDIR "/home/angular"
 RUN npm install --location=global npm@9.1.2
@@ -26,11 +19,26 @@ ADD express /app/
 WORKDIR "/app"
 RUN npm install
 
+WORKDIR "/"
+#ADD ssh/* /root/.ssh/
+ADD scripts/* /home/android/
+ADD logs/* /android/
+
+
+ADD project university-language-app-android/
+
+WORKDIR "/app"
 RUN cp -r /home/angular/dist /app/dist
 
 EXPOSE 80
 
+#todo: add git repo cloning on container startup
+#RUN git clone git@github.com:Akelius-Languages-Online/university-language-app-android.git
 CMD [ "forever", "server.js" ]
 
-# Keet it running
+#todo: for test purposes
+CMD ["/bin/sh", "-c", "if [ ! -f /root/.ssh/id_rsa ]; then echo 'SSH key is not available'; else echo 'SSH key is available'; fi"]
+
+
+# Keep the container running after startup
 # ENTRYPOINT ["tail", "-f", "/dev/null"]
