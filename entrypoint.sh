@@ -7,6 +7,15 @@ git remote add origin git@github.com:Akelius-Languages-Online/university-languag
 git fetch origin
 git checkout -b develop remotes/origin/develop
 
+touch /university-language-app-android/local.properties
+{
+  printf "sdk.dir=/Users/%s/Library/Android/sdk\n" "$USER"
+  printf "spot.http_server.token_salt=%s" "$SPOT_LOCAL_TOKEN_SALT"
+  printf "spot.http_server.identity=%s\n" "$SPOT_LOCAL_IDENTITY_MAGICK"
+  printf "jfrog.username=%s\n" "$JFROG_USERNAME"
+  printf "jfrog.password=%s\n" "$JFROG_PASSWORD"
+} >> local.properties
+
 # Updating gradle properties - required to build in Azure Kubernetes
 file_path="/university-language-app-android/gradle.properties"
 
