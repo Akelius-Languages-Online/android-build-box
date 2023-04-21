@@ -61,6 +61,7 @@ def buildAndPushImage(imageTag) {
     def imageName = "${KubeConfig.registryUrl}/${KubeConfig.registryRepository}"
     def latestImageName = "${imageName}:latest"
 
+    echo "Pulling latest image..."
     docker.image("${latestImageName}").pull()
 
     def dockerImage
