@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+
+  android-build-box:
+    build: .
+    ports:
+      - "80:8080"
+    expose:
+      - 8080
+    container_name: my-app-container

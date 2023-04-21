@@ -2,6 +2,6 @@
 
 docker run \
   --env-file ./.env \
-  -p 8282:80 \
+  -p 8282:8080 \
   -d \
   android-build-box:latest

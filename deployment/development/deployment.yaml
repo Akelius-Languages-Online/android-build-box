@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: university-android-app-box
+  name: android-build-box
   namespace: lae-development
   labels:
-    app: university-android-app-box
+    app: android-build-box
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: university-android-app-box
+      app: android-build-box
   revisionHistoryLimit: 2
   strategy:
     type: RollingUpdate
@@ -19,62 +19,81 @@ spec:
   template:
     metadata:
       labels:
-        app: university-android-app-box
+        app: android-build-box
       annotations:
         botkube.io/channel: "university-k8s"
     spec:
       serviceAccountName: azure-workload-identity-service-account
       securityContext:
-        runAsUser: 2000
-        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
       containers:
-        - name: university-android-app-box
-          image: businessschool.azurecr.io/business-school/university-android-app-box:IMAGE_TAG
+        - name: android-build-box
+          image: businessschool.azurecr.io/business-school/android-build-box:IMAGE_TAG
           imagePullPolicy: Always
           ports:
-            - containerPort: 8282
+            - containerPort: 8080
           resources:
             limits:
-              cpu: "0.2"
-              #            todo: Ask Ivo about memory consumption
-              memory: 256Mi
+              cpu: 2000m
+              #if less - it may fail on the fresh start
+              memory: 4992Mi  # ~4.875 Gi
             requests:
-              #           todo: Ask Ivo about memory consumption
-              cpu: "0.2"
-              memory: 256Mi
+              cpu: 500m
+              memory: 1536Mi
           livenessProbe:
             httpGet:
               path: /health
-              port: 8282
-            initialDelaySeconds: 120
+              port: 8080
+            initialDelaySeconds: 60
             periodSeconds: 30
             failureThreshold: 10
           readinessProbe:
             httpGet:
               path: /health
-              port: 8282
-            initialDelaySeconds: 120
+              port: 8080
+            initialDelaySeconds: 60
             periodSeconds: 30
             failureThreshold: 10
           volumeMounts:
             - name: secrets-store-inline # mount the keyvault secret as volume inside the container
               mountPath: "/mnt/secrets-store"
               readOnly: true
-            - name: ssh-private-key
-              mountPath: "/root/.ssh/id_rsa"
-              subPath: id_rsa
+            - name: android-build-box-ssh-keys
+              mountPath: "/home/docker/.ssh"
               readOnly: true
-            - name: ssh-public-key
-              mountPath: "/root/.ssh/id_rsa.pub"
-              subPath: id_rsa.pub
-              readOnly: true
-#          env:
-#      todo: add slack token
-#            - name: SLACK_TOKEN
-#              valueFrom:
-#                secretKeyRef:
-#                  name: android-app-box-secret
-#                  key: ANDROID-APP-BOX-SLACK-TOKEN
+          env:
+            - name: HOST_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: android-build-box-secret
+                  key: HOST_NAME
+            - name: SLACK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: android-build-box-secret
+                  key: SLACK-TOKEN
+            - name: SPOT_LOCAL_IDENTITY_MAGICK
+              valueFrom:
+                secretKeyRef:
+                  name: android-build-box-secret
+                  key: SPOT_LOCAL_IDENTITY_MAGICK
+            - name: SPOT_LOCAL_TOKEN_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: android-build-box-secret
+                  key: SPOT_LOCAL_TOKEN_SALT
+            - name: JFROG_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: android-build-box-secret
+                  key: JFROG_USERNAME
+            - name: JFROG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: android-build-box-secret
+                  key: JFROG_PASSWORD
       imagePullSecrets:
         - name: businessschool-azurecr-io-regsecret
       volumes:
@@ -83,17 +102,9 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: keyvault-secret-code-lae-development # metadata.name in secret-provider-class.yaml
+              secretProviderClass: keyvault-android-build-box-lae-development # metadata.name in secret-provider-class.yaml
               secretProviderClassNamespace: lae-development
-        - name: ssh-private-key
+        - name: android-build-box-ssh-keys
           secret:
-            secretName: ssh-private-key
-            items:
-              - key: ANDROID-APP-BOX-SSH-PRIVATE-KEY
-                path: id_rsa
-        - name: ssh-public-key
-          secret:
-            secretName: ssh-public-key
-            items:
-              - key: ANDROID-APP-BOX-SSH-PUBLIC-KEY
-                path: id_rsa.pub
+            secretName: android-build-box-ssh-keys
+            defaultMode: 0600

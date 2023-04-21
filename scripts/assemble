@@ -37,7 +37,7 @@ echo "" >> /android/assemble.in.progress.log
 echo "[starting $(pgrep -x assemble)]" > /android/assemble.in.progress.log
 echo "[starting $(pgrep -x assemble)]" > /android/assemble.in.progress.error
 
-pushd university-language-app-android
+pushd /university-language-app-android
 
 echo "updating git..." >> /android/assemble.in.progress.log
 echo "" >> /android/assemble.in.progress.log
@@ -68,10 +68,9 @@ rm -f /android/assemble.in.progress
 touch /android/assemble.complete
 
 echo "uploading to sandbox" >> /android/assemble.in.progress.log
-sshpass -p $SSH_PASSWORD rsync -azP -e "ssh -p ${SSH_PORT} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" /android/snapshot.apk ${SSH_USER}@${SSH_HOST}:${SSH_PATH}
 
 echo "" >> /android/assemble.in.progress.log
-echo "final file can be downloaded from https://sandbox.ranapat.org/drop/snapshot.apk" >> /android/assemble.in.progress.log
+echo "final file can be downloaded from https://$HOST_NAME/drop/snapshot.apk" >> /android/assemble.in.progress.log
 echo "" >> /android/assemble.in.progress.log
 
 echo "" >> /android/assemble.in.progress.log
@@ -84,5 +83,5 @@ echo "" >> /android/assemble.in.progress.log
 ./send-to-misc \
     'Android Build Box' \
     'Snapshot assembled' \
-    "http://${HOST_NAME}:8282/api/download" \
+    "http://${HOST_NAME}/api/download" \
     '#36a64f'

@@ -14,14 +14,6 @@ Before proceed please make sure to populate the proper `.env` and ssh keys.
 HOST_NAME=<place the host or the ip of the server that will host the image>
 # It's used for the slack messages to report the url for the apk download
 
-# All SSH_ variables are for automatically uploading the apk to another machine.
-# It's useful in case you implement different pipelines
-SSH_HOST=<host_or_ip>
-SSH_PORT=<ssh_port>
-SSH_USER=<ssh_user>
-SSH_PASSWORD=<ssh_password>
-SSH_PATH=<ssh_path>
-
 # Used to report to slack.
 SLACK_TOKEN=<Slack webhook token>
 ```
