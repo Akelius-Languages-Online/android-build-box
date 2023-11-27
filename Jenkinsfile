@@ -115,10 +115,6 @@ def validateK8SConfigs(String environment, String credentials, String imageTag) 
   }
 }
 
-def notifyOnSlack(String message, String channel, String color) {
-  slackSend(message: message, channel: channel, color: color, token: "8OKPnAPmAsAUAlbV29HurMTU")
-}
-
 def buildAndPushImageStage(String imageTag) {
   stage('Build and Push Docker Image') {
     currentStage = 'Build and Push Docker Image'
