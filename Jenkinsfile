@@ -157,7 +157,8 @@ timeout(time: 60, unit: 'MINUTES') {
         podAnnotation(key: 'botkube.io/channel', value: 'university-k8s')
       ],
       cloud: 'k8s-ci-cd',
-      inheritFrom: 'pod-base-configuration',
+      namespace: 'lae-jenkins',
+      inheritFrom: 'pod-base-configuration-with-dind',
       containers: [
         containerTemplate(
           name: 'linux',
