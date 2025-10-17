@@ -74,10 +74,8 @@ def kubeSubst(placeholder, value, file) {
   sh "sed -i \"s|${placeholder}|${value}|\" ${file}"
 }
 
-//todo: replace with new approach
-def setupKubeConfig(kubeConfigPath) {
-  sh "mkdir -p ~/.kube"
-  sh "cp ${kubeConfigPath} ~/.kube/config"
+def setupKubeConfig(Environment environment) {
+  sh "setup-kubeconfig.sh --cluster-name ${environment.kubernetesCluster} --namespace ${environment.kubernetesNamespace}"
 }
 
 def buildAndPushImage(imageTag) {
@@ -107,20 +105,12 @@ def stageImage(Environment environment, String imageTag) {
   def fileDirectory = environment.fileDirectory
 
   container('kubectl') {
-    //todo: replace with new approach
-    withCredentials([
-      [$class: "FileBinding",
-       credentialsId: environment.kubernetesCredentials,
-       variable: 'KUBE_CONFIG'
-      ]
-    ]) {
-      setupKubeConfig(env.KUBE_CONFIG)
+    setupKubeConfig(environment)
 
-      kubeSubst("IMAGE_TAG", imageTag, "deployment/${fileDirectory}/deployment.yaml")
+    kubeSubst("IMAGE_TAG", imageTag, "deployment/${fileDirectory}/deployment.yaml")
 
-      sh "kubectl apply -f deployment/${fileDirectory}"
-      sh "kubectl rollout status deployment ${KubeConfig.kubernetesService} --namespace ${environment.kubernetesNamespace}"
-    }
+    sh "kubectl apply -f deployment/${fileDirectory}"
+    sh "kubectl rollout status deployment ${KubeConfig.kubernetesService} --namespace ${environment.kubernetesNamespace}"
   }
 }
 
@@ -128,18 +118,10 @@ def validateK8SConfigs(Environment environment, String imageTag) {
   def fileDirectory = environment.fileDirectory
 
   container('kubectl') {
-    //todo: replace with new approach
-    withCredentials([
-      [$class: "FileBinding",
-       credentialsId: environment.kubernetesCredentials,
-       variable: 'KUBE_CONFIG'
-      ]
-    ]) {
-      setupKubeConfig(env.KUBE_CONFIG)
+    setupKubeConfig(environment)
 
-      kubeSubst("IMAGE_TAG", imageTag, "deployment/${fileDirectory}/deployment.yaml")
-      sh "kubectl apply --validate=true --dry-run=client -f deployment/${fileDirectory}"
-    }
+    kubeSubst("IMAGE_TAG", imageTag, "deployment/${fileDirectory}/deployment.yaml")
+    sh "kubectl apply --validate=true --dry-run=client -f deployment/${fileDirectory}"
   }
 }
 
