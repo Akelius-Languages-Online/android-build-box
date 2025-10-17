@@ -14,11 +14,35 @@ class KubeConfig {
   static String registryRepository = "business-school/android-build-box"
   static String registryUrl = "businessschool.azurecr.io"
   static String kubernetesService = "android-build-box"
-  static String developmentNamespace = "lae-development"
-  static String testingNamespace = "lae-testing"
-  static String stagingNamespace = "lae-staging"
-  static String productionNamespace = "lae-production"
 }
+
+enum Environment {
+  DEVELOPMENT('development', 'Dev', 'development-languages', 'lae-development', 'kubeconfig-lae-development-azure-cicd'),
+  TESTING('testing', 'Test', 'development-languages', 'lae-testing', 'kubeconfig-lae-testing-azure-cicd'),
+  STAGING('staging', 'Stage', 'production-languages', 'lae-staging', 'kubeconfig-lae-staging-azure-cicd'),
+  PRODUCTION('production', 'Prod', 'production-languages', 'lae-production', 'kubeconfig-lae-production-azure-cicd')
+
+  final String fileDirectory
+  final String shortName
+  final String kubernetesCluster
+  final String kubernetesNamespace
+  final String kubernetesCredentials
+
+  Environment(
+    String fileDirectory,
+    String shortName,
+    String kubernetesCluster,
+    String kubernetesNamespace,
+    String kubernetesCredentials
+  ) {
+    this.fileDirectory = fileDirectory
+    this.shortName = shortName
+    this.kubernetesCluster = kubernetesCluster
+    this.kubernetesNamespace = kubernetesNamespace
+    this.kubernetesCredentials = kubernetesCredentials
+  }
+}
+
 
 boolean deployDevelopment = env.BRANCH_NAME == 'main'
 boolean deploy = deployDevelopment
@@ -50,7 +74,7 @@ def kubeSubst(placeholder, value, file) {
   sh "sed -i \"s|${placeholder}|${value}|\" ${file}"
 }
 
-// this function install the kubectl configuration
+//todo: replace with new approach
 def setupKubeConfig(kubeConfigPath) {
   sh "mkdir -p ~/.kube"
   sh "cp ${kubeConfigPath} ~/.kube/config"
@@ -79,38 +103,42 @@ def buildAndPushImage(imageTag) {
   }
 }
 
-// this function apply the deployment file to the a namespace
-def stageImage(String kubernetesTeamNamespacePrefix,
-               String environment,
-               String credentials,
-               String imageTag
-) {
+def stageImage(Environment environment, String imageTag) {
+  def fileDirectory = environment.fileDirectory
+
   container('kubectl') {
+    //todo: replace with new approach
     withCredentials([
       [$class: "FileBinding",
-       credentialsId: credentials,
+       credentialsId: environment.kubernetesCredentials,
        variable: 'KUBE_CONFIG'
       ]
     ]) {
       setupKubeConfig(env.KUBE_CONFIG)
-      kubeSubst("IMAGE_TAG", imageTag, "deployment/${environment}/deployment.yaml")
-      sh "kubectl apply -f deployment/${environment}"
-      sh "kubectl rollout status deployment ${KubeConfig.kubernetesService} --namespace ${kubernetesTeamNamespacePrefix}"
+
+      kubeSubst("IMAGE_TAG", imageTag, "deployment/${fileDirectory}/deployment.yaml")
+
+      sh "kubectl apply -f deployment/${fileDirectory}"
+      sh "kubectl rollout status deployment ${KubeConfig.kubernetesService} --namespace ${environment.kubernetesNamespace}"
     }
   }
 }
 
-def validateK8SConfigs(String environment, String credentials, String imageTag) {
+def validateK8SConfigs(Environment environment, String imageTag) {
+  def fileDirectory = environment.fileDirectory
+
   container('kubectl') {
+    //todo: replace with new approach
     withCredentials([
       [$class: "FileBinding",
-       credentialsId: credentials,
+       credentialsId: environment.kubernetesCredentials,
        variable: 'KUBE_CONFIG'
       ]
     ]) {
       setupKubeConfig(env.KUBE_CONFIG)
-      kubeSubst("IMAGE_TAG", imageTag, "deployment/${environment}/deployment.yaml")
-      sh "kubectl apply --validate=true --dry-run=client -f deployment/${environment}"
+
+      kubeSubst("IMAGE_TAG", imageTag, "deployment/${fileDirectory}/deployment.yaml")
+      sh "kubectl apply --validate=true --dry-run=client -f deployment/${fileDirectory}"
     }
   }
 }
@@ -185,7 +213,7 @@ timeout(time: 60, unit: 'MINUTES') {
 
         stage('Validate K8S configs Dev') {
           currentStage = 'Validate K8S configs Dev'
-          validateK8SConfigs('development', 'kubeconfig-lae-development-azure-cicd', imageTag)
+          validateK8SConfigs(Environment.DEVELOPMENT, imageTag)
         }
 
         if (deploy) {
@@ -194,7 +222,7 @@ timeout(time: 60, unit: 'MINUTES') {
           if (deployDevelopment) {
             stage('Deploy Dev') {
               currentStage = 'Deploy Dev'
-              stageImage(KubeConfig.developmentNamespace, 'development', 'kubeconfig-lae-development-azure-cicd', imageTag)
+              stageImage(Environment.DEVELOPMENT, imageTag)
             }
           }
 
